@@ -1,0 +1,153 @@
+// Expert Child — schools, users, products, fees, and classes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SchoolStatus {
+  ACTIVE
+  PENDING
+  PAUSED
+}
+
+enum UserRole {
+  EXPERT_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  BURSAR
+  PARENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  PAUSED
+}
+
+enum ProductStatus {
+  AVAILABLE
+  LOW_STOCK
+}
+
+enum FeeKind {
+  TUITION
+  BOOKS
+  LESSON
+}
+
+enum FeeStatus {
+  OPEN
+  DUE
+}
+
+enum Term {
+  TERM_1
+  TERM_2
+  TERM_3
+}
+
+model School {
+  id        String       @id @default(cuid())
+  name      String
+  motto     String       @default("")
+  state     String
+  lga       String
+  city      String
+  logoUrl   String?      @db.Text
+  status    SchoolStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  users    User[]
+  classes  Class[]
+  products Product[]
+  fees     Fee[]
+
+  @@index([status])
+  @@index([state, lga])
+}
+
+model User {
+  id         String     @id @default(cuid())
+  surname    String
+  otherNames String
+  email      String     @unique
+  phone      String
+  avatarUrl  String?    @db.Text
+  role       UserRole
+  status     UserStatus @default(INVITED)
+  schoolId   String?
+  school     School?    @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  classAssignments ClassTeacher[]
+
+  @@index([schoolId])
+  @@index([role])
+  @@index([status])
+}
+
+model Class {
+  id        String   @id @default(cuid())
+  name      String
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teachers ClassTeacher[]
+  fees     Fee[]
+
+  @@unique([schoolId, name])
+}
+
+model ClassTeacher {
+  classId String
+  userId  String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([classId, userId])
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String
+  description String        @default("")
+  price       Int
+  status      ProductStatus @default(AVAILABLE)
+  imageUrl    String?       @db.Text
+  schoolId    String
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([schoolId, slug])
+  @@index([schoolId, status])
+}
+
+/// School fee schedule. Tuition is set per class. Books and lesson fees are school-wide, so classId is null.
+model Fee {
+  id        String    @id @default(cuid())
+  kind      FeeKind
+  term      Term
+  amount    Int
+  status    FeeStatus @default(OPEN)
+  schoolId  String
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId   String?
+  class     Class?    @relation(fields: [classId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([schoolId, kind, term])
+  @@index([classId])
+}
