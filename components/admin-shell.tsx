@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { signOut } from "@/app/expert-admin/actions";
 import { TodayLabel } from "@/components/today-label";
 
 const nav = [
@@ -72,12 +73,14 @@ export function AdminShell({
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="rounded-full border border-[#1c1412]/10 px-3 py-1.5 text-xs font-medium text-[#6e1520] hover:bg-[#fff8f6]"
-            >
-              Sign out
-            </Link>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="rounded-full border border-[#1c1412]/10 px-3 py-1.5 text-xs font-medium text-[#6e1520] hover:bg-[#fff8f6]"
+              >
+                Sign out
+              </button>
+            </form>
             <span className="grid size-9 place-items-center rounded-full bg-[#6e1520] text-xs font-semibold text-white">
               AD
             </span>

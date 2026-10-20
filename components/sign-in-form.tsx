@@ -7,12 +7,16 @@ export function SignInForm({
   description,
   accent,
   nextHref,
+  action,
+  error,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   accent: "parents" | "admin";
   nextHref?: string;
+  action?: (formData: FormData) => void | Promise<void>;
+  error?: string;
 }) {
   const submitClass =
     accent === "parents"
@@ -52,7 +56,8 @@ export function SignInForm({
             {description}
           </p>
 
-          <form className="mt-4 space-y-3" action="#" method="post">
+          <form className="mt-4 space-y-3" action={action ?? "#"} method={action ? undefined : "post"}>
+            {error ? <p className="text-sm text-[#e10600]">{error}</p> : null}
             <label className="block">
               <span className="text-xs font-semibold tracking-wide text-[#5c4b45] uppercase">
                 Email
@@ -79,7 +84,7 @@ export function SignInForm({
                 className="mt-1 w-full rounded-xl border border-[#1c1412]/10 bg-[#faf7f4] px-3.5 py-2 text-sm outline-none focus:border-[#e10600] focus:bg-white"
               />
             </label>
-            {nextHref ? (
+            {nextHref && !action ? (
               <Link
                 href={nextHref}
                 className={`mt-1 flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e10600] ${submitClass}`}

@@ -75,9 +75,10 @@ model User {
   id         String     @id @default(cuid())
   surname    String
   otherNames String
-  email      String     @unique
-  phone      String
-  avatarUrl  String?    @db.Text
+  email        String     @unique
+  phone        String
+  passwordHash String?
+  avatarUrl    String?    @db.Text
   role       UserRole
   status     UserStatus @default(INVITED)
   schoolId   String?

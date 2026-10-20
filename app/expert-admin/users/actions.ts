@@ -10,6 +10,8 @@ import {
   type DirectoryUser,
 } from "@/lib/directory-user";
 import { createDirectoryUser, deleteDirectoryUser, updateDirectoryUser } from "@/lib/directory-users";
+import { hashPassword } from "@/lib/password";
+import { requireExpertAdmin } from "@/lib/auth";
 
 export async function saveDirectoryUser(input: {
   id?: string;
@@ -19,6 +21,7 @@ export async function saveDirectoryUser(input: {
   phone: string;
   avatar: string;
   schoolId: string;
+  password?: string;
   role: DirectoryRole;
   status: DirectoryStatus;
 }): Promise<{ ok: true; user: DirectoryUser } | { ok: false; message: string }> {
@@ -28,10 +31,13 @@ export async function saveDirectoryUser(input: {
   const phone = input.phone.trim();
   const expertAdmin = input.role === "expert-admin";
   const schoolId = expertAdmin ? null : input.schoolId.trim();
+  const password = input.password?.trim() ?? "";
 
-  if (!surname || !otherNames || !email || !phone || (!expertAdmin && !schoolId)) {
+  if (!surname || !otherNames || !email || !phone || (!expertAdmin && !schoolId) || (!input.id && !password)) {
     return { ok: false, message: "Fill in every field before saving." };
   }
+
+  await requireExpertAdmin();
 
   const data = {
     surname,
@@ -46,8 +52,12 @@ export async function saveDirectoryUser(input: {
 
   try {
     const user = input.id
-      ? await updateDirectoryUser({ id: input.id, ...data })
-      : await createDirectoryUser(data);
+      ? await updateDirectoryUser({
+          id: input.id,
+          ...data,
+          ...(password ? { passwordHash: hashPassword(password) } : {}),
+        })
+      : await createDirectoryUser({ ...data, passwordHash: hashPassword(password) });
     revalidatePath("/expert-admin/users");
     return { ok: true, user };
   } catch (error) {
@@ -67,6 +77,7 @@ export async function saveDirectoryUser(input: {
 export async function removeDirectoryUser(
   id: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
+  await requireExpertAdmin();
   try {
     await deleteDirectoryUser(id);
     revalidatePath("/expert-admin/users");

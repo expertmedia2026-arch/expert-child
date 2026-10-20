@@ -40,6 +40,7 @@ export async function createDirectoryUser(input: {
   phone: string;
   avatar: string;
   schoolId: string | null;
+  passwordHash: string;
   role: UserRole;
   status: UserStatus;
 }): Promise<DirectoryUser> {
@@ -49,6 +50,7 @@ export async function createDirectoryUser(input: {
       otherNames: input.otherNames,
       email: input.email,
       phone: input.phone,
+      passwordHash: input.passwordHash,
       avatarUrl: input.avatar || null,
       schoolId: input.schoolId,
       role: input.role,
@@ -68,6 +70,7 @@ export async function updateDirectoryUser(input: {
   phone: string;
   avatar: string;
   schoolId: string | null;
+  passwordHash?: string;
   role: UserRole;
   status: UserStatus;
 }): Promise<DirectoryUser> {
@@ -80,6 +83,7 @@ export async function updateDirectoryUser(input: {
       phone: input.phone,
       avatarUrl: input.avatar || null,
       schoolId: input.schoolId,
+      ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
       role: input.role,
       status: input.status,
     },

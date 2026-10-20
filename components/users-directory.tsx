@@ -30,6 +30,7 @@ const emptyForm = {
   otherNames: "",
   email: "",
   phone: "",
+  password: "",
   avatar: "",
   schoolId: "",
   role: "expert-admin" as DirectoryRole,
@@ -56,6 +57,7 @@ export function UsersDirectory({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -88,23 +90,27 @@ export function UsersDirectory({
     setSaving(false);
     setError("");
     setForm(emptyForm);
+    setShowPassword(false);
   }
 
   function openAdd() {
     setEditingId(null);
     setError("");
     setForm(emptyForm);
+    setShowPassword(false);
     setOpen(true);
   }
 
   function openEdit(user: DirectoryUser) {
     setEditingId(user.id);
     setError("");
+    setShowPassword(false);
     setForm({
       surname: user.surname,
       otherNames: user.otherNames,
       email: user.email,
       phone: user.phone,
+      password: "",
       avatar: user.avatar,
       schoolId: user.role === "expert-admin" ? "" : user.schoolId,
       role: user.role,
@@ -364,6 +370,41 @@ export function UsersDirectory({
                       placeholder="08000000000"
                       className={fieldClass}
                     />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold tracking-wide text-[#5c4b45] uppercase">
+                      Password
+                    </span>
+                    <div className="relative mt-1">
+                      <input
+                        required={!editingId}
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={form.password}
+                        onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                        placeholder={editingId ? "Leave blank to keep" : "Password"}
+                        className="w-full rounded-xl border border-[#1c1412]/10 bg-[#faf7f4] px-3 py-2 pr-10 text-sm outline-none focus:border-[#e10600] focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center text-[#6d5c56] hover:text-[#1c1412]"
+                      >
+                        {showPassword ? (
+                          <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M3 3l18 18" strokeLinecap="round" />
+                            <path d="M10.6 10.6a2 2 0 002.8 2.8" strokeLinecap="round" />
+                            <path d="M9.9 5.2A10.8 10.8 0 0112 5c5 0 8.5 3.2 10 7-0.6 1.5-1.6 2.9-2.8 4M6.1 6.1C4.2 7.4 2.8 9.1 2 12c1.5 3.8 5 7 10 7 1.6 0 3.1-.3 4.4-.9" strokeLinecap="round" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" strokeLinejoin="round" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </label>
                   <label className="block">
                     <span className="text-xs font-semibold tracking-wide text-[#5c4b45] uppercase">
