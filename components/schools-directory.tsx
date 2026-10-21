@@ -2,22 +2,12 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { removeSchool, saveSchool } from "@/app/expert-admin/schools/actions";
 import nigeriaLgas from "@/data/nigeria-lgas.json";
+import type { DirectorySchoolRecord, SchoolStatusLabel } from "@/lib/directory-school";
 
-type SchoolStatus = "Active" | "Pending" | "Paused";
-
-type School = {
-  id: string;
-  name: string;
-  motto: string;
-  state: string;
-  lga: string;
-  city: string;
-  logo: string;
-  pupils: number;
-  users: number;
-  status: SchoolStatus;
-};
+type SchoolStatus = SchoolStatusLabel;
+type School = DirectorySchoolRecord;
 
 const lgasByState = nigeriaLgas as Record<string, string[]>;
 const states = Object.keys(lgasByState).sort((a, b) => a.localeCompare(b, "en"));
@@ -26,15 +16,11 @@ function stateLabel(state: string) {
   return state === "Nassarawa" ? "Nasarawa" : state;
 }
 
-const starterSchools: School[] = [
-  { id: "riverside", name: "Riverside Primary", motto: "", state: "Lagos", lga: "Ikeja", city: "Lagos", logo: "", pupils: 486, users: 18, status: "Active" },
-  { id: "hillcrest", name: "Hillcrest Academy", motto: "", state: "Federal Capital Territory", lga: "Municipal", city: "Abuja", logo: "", pupils: 732, users: 24, status: "Active" },
-  { id: "greenfield", name: "Greenfield School", motto: "", state: "Rivers", lga: "Port Harcourt", city: "Port Harcourt", logo: "", pupils: 214, users: 6, status: "Pending" },
-  { id: "st-marys", name: "St. Mary's", motto: "", state: "Oyo", lga: "Ibadan North", city: "Ibadan", logo: "", pupils: 358, users: 15, status: "Active" },
-  { id: "oakbridge", name: "Oakbridge", motto: "", state: "Enugu", lga: "Enugu North", city: "Enugu", logo: "", pupils: 141, users: 4, status: "Paused" },
-  { id: "cedar-lane", name: "Cedar Lane", motto: "", state: "Kano", lga: "Kano Municipal", city: "Kano", logo: "", pupils: 403, users: 11, status: "Active" },
-  { id: "bright-path", name: "Bright Path", motto: "", state: "Edo", lga: "Oredo", city: "Benin", logo: "", pupils: 96, users: 3, status: "Pending" },
-];
+function schoolInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const letters = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
+  return letters.toUpperCase();
+}
 
 const filters = ["All", "Active", "Pending", "Paused"] as const;
 const statuses: SchoolStatus[] = ["Active", "Pending", "Paused"];
@@ -58,13 +44,16 @@ const emptyForm = {
 const fieldClass =
   "mt-1 w-full rounded-xl border border-[#1c1412]/10 bg-[#faf7f4] px-3 py-2 text-sm outline-none focus:border-[#e10600] focus:bg-white";
 
-export function SchoolsDirectory() {
-  const [schools, setSchools] = useState(starterSchools);
+export function SchoolsDirectory({ schools: initialSchools }: { schools: School[] }) {
+  const [schools, setSchools] = useState(initialSchools);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +80,8 @@ export function SchoolsDirectory() {
     setOpen(false);
     setEditingId(null);
     setForm(emptyForm);
+    setError("");
+    setSaving(false);
   }
 
   function openAdd() {
@@ -123,52 +114,34 @@ export function SchoolsDirectory() {
     reader.readAsDataURL(file);
   }
 
-  function addSchool(event: FormEvent<HTMLFormElement>) {
+  async function addSchool(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = form.name.trim();
-    const motto = form.motto.trim();
-    const city = form.city.trim();
-    if (!name || !motto || !form.state || !form.lga || !city) return;
+    setSaving(true);
+    setError("");
+    const result = await saveSchool(editingId ? { ...form, id: editingId } : form);
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
 
-    setSchools((current) => {
-      if (editingId) {
-        return current.map((school) =>
-          school.id === editingId
-            ? {
-                ...school,
-                name,
-                motto,
-                state: form.state,
-                lga: form.lga,
-                city,
-                logo: form.logo,
-                status: form.status,
-              }
-            : school,
-        );
-      }
-      return [
-        {
-          id: `${name}-${city}-${current.length}`,
-          name,
-          motto,
-          state: form.state,
-          lga: form.lga,
-          city,
-          logo: form.logo,
-          pupils: 0,
-          users: 0,
-          status: form.status,
-        },
-        ...current,
-      ];
-    });
+    setSchools((current) =>
+      editingId
+        ? current.map((school) => (school.id === result.school.id ? result.school : school))
+        : [result.school, ...current],
+    );
     setFilter("All");
     setQuery("");
     closeModal();
   }
 
-  function deleteSchool(id: string) {
+  async function deleteSchool(id: string) {
+    setNotice("");
+    const result = await removeSchool(id);
+    if (!result.ok) {
+      setNotice(result.message);
+      return;
+    }
     setSchools((current) => current.filter((school) => school.id !== id));
   }
 
@@ -219,6 +192,8 @@ export function SchoolsDirectory() {
         </div>
       </div>
 
+      {notice ? <p className="px-4 pt-3 text-sm text-[#e10600]">{notice}</p> : null}
+
       {visible.length === 0 ? (
         <p className="px-4 py-8 text-sm text-[#6d5c56]">No schools match that search.</p>
       ) : (
@@ -226,6 +201,7 @@ export function SchoolsDirectory() {
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="bg-[#faf7f4] text-xs tracking-wide text-[#6d5c56] uppercase">
               <tr>
+                <th className="w-16 px-4 py-2 font-semibold">Logo</th>
                 <th className="px-4 py-2 font-semibold">School</th>
                 <th className="px-4 py-2 font-semibold">City</th>
                 <th className="px-4 py-2 font-semibold">Pupils</th>
@@ -237,6 +213,17 @@ export function SchoolsDirectory() {
             <tbody>
               {visible.map((school) => (
                 <tr key={school.id} className="border-t border-[#1c1412]/6">
+                  <td className="px-4 py-2.5">
+                    {school.logo ? (
+                      // Stored school logo, including a data URL from the upload field.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={school.logo} alt="" className="size-8 rounded-full object-cover" />
+                    ) : (
+                      <span className="grid size-8 place-items-center rounded-full bg-[#f4efe8] text-[10px] font-semibold text-[#6e1520]">
+                        {schoolInitials(school.name)}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 font-medium">{school.name}</td>
                   <td className="px-4 py-2.5 text-[#6d5c56]">{school.city}</td>
                   <td className="px-4 py-2.5 text-[#6d5c56]">{school.pupils.toLocaleString("en-GB")}</td>
@@ -306,6 +293,7 @@ export function SchoolsDirectory() {
                 </div>
 
                 <form onSubmit={addSchool} className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
+                  {error ? <p className="col-span-2 text-sm text-[#e10600]">{error}</p> : null}
                   <div className="col-span-2 flex justify-center">
                     <label className="grid size-24 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-[#1c1412]/25 bg-[#faf7f4] text-center">
                       {form.logo ? (
@@ -422,9 +410,10 @@ export function SchoolsDirectory() {
                     </button>
                     <button
                       type="submit"
-                      className="rounded-full bg-[#e10600] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c40500]"
+                      disabled={saving}
+                      className="rounded-full bg-[#e10600] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c40500] disabled:opacity-60"
                     >
-                      {editingId ? "Save changes" : "Save school"}
+                      {saving ? "Saving…" : editingId ? "Save changes" : "Save school"}
                     </button>
                   </div>
                 </form>
